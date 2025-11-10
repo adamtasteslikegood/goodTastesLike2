@@ -1,0 +1,42 @@
+/.venv/
+/.idea/
+# Virtual Environment
+# ==================
+
+ .venv/
+ venv/
+ ENV/
+ .env/
+ .DS\_Store
+ .pycharm_helpers/
+ .vscode/
+ .idea/
+ .idea/workspace.xml
+ .idea/dictionaries/
+ .idea/libraries/
+ .idea/misc.xml
+ .idea/vcs.xml
+ .idea/vmoptions
+
+
+# Python
+# ======
+
+ **pycache**/
+ \*.pyc
+ \*.pyo
+ \*.pyd
+
+# Django
+# ======
+
+ \*.log
+ db.sqlite3
+ media/
+
+# OS
+# ==
+
+.DS\_Store Thumbs.db
+\*.idea
+/.idea/inspectionProfiles/

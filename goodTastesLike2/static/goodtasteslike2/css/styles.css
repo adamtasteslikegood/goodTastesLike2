@@ -1,0 +1,89 @@
+/* Tastes Like 2 Good Recipes Vegan Recipe Multii-Agent Recipes Django vegan-Ninja-Warrior Edition
+https://github.com/adamtasteslikegood/TastesLike2GoodRecipes*/
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    background-color: #f8f8f8;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+header {
+    padding: 20px 40px;
+    background-color: #4CAF50; /* Green */
+    color: white;
+    text-align: center;
+}
+header h1 {
+    margin: 0;
+    font-size: 2.5em;
+}
+.recipe-list {
+    padding: 20px 40px 40px 40px;
+}
+.recipe {
+    border-bottom: 2px solid #eee;
+    padding-bottom: 30px;
+    margin-bottom: 30px;
+}
+.recipe:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+.recipe h2 {
+    font-size: 1.8em;
+    color: #2E7D32; /* Darker Green */
+    margin-top: 0;
+}
+.recipe-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+.recipe-meta {
+    display: flex;
+    gap: 20px;
+    font-size: 0.9em;
+    color: #555;
+    margin-bottom: 20px;
+}
+.recipe-meta span {
+    background-color: #E8F5E9; /* Light Green */
+    padding: 5px 10px;
+    border-radius: 20px;
+}
+h3 {
+    font-size: 1.3em;
+    color: #333;
+    border-bottom: 2px solid #4CAF50;
+    padding-bottom: 5px;
+    margin-top: 25px;
+}
+.recipe-ingredients ul,
+.recipe-instructions ol {
+    padding-left: 20px;
+}
+.recipe-ingredients li {
+    list-style-type: disc;
+    margin-bottom: 8px;
+}
+.recipe-instructions li {
+    list-style-type: decimal;
+    margin-bottom: 12px;
+    line-height: 1.7;
+}
+.no-recipes {
+    text-align: center;
+    font-size: 1.2em;
+    color: #777;
+    padding: 50px 0;
+}
