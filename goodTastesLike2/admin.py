@@ -6,6 +6,8 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponseRedirect
 import json
 import jsonschema
+import requests
+from pathlib import Path
 from .models import Recipe, Tag, Ingredient, Instruction
 
 
@@ -31,7 +33,14 @@ class TagInline(admin.TabularInline):
 class JSONImportForm(forms.Form):
     json_file = forms.FileField(
         label='Select a JSON file',
-        help_text='Upload a JSON file containing recipes following the schema'
+        help_text='Upload a JSON file containing recipes following the schema',
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'multiple': True})
+    )
+    json_path = forms.CharField(
+        label='File path or URL',
+        required=False,
+        help_text='Import from a local file path or remote URL'
     )
     validate_schema = forms.BooleanField(
         label='Validate against schema',
@@ -76,18 +85,46 @@ class RecipeAdmin(admin.ModelAdmin):
         if request.method == 'POST':
             form = JSONImportForm(request.POST, request.FILES)
             if form.is_valid():
-                json_file = request.FILES['json_file']
                 validate = form.cleaned_data['validate_schema']
+                json_path = form.cleaned_data.get('json_path', '').strip()
+
+                all_recipes = []
 
                 try:
-                    # Read and parse JSON
-                    json_data = json.load(json_file)
+                    # Handle file uploads (multiple files)
+                    if request.FILES.getlist('json_file'):
+                        for json_file in request.FILES.getlist('json_file'):
+                            json_data = json.load(json_file)
+                            recipes = json_data if isinstance(json_data, list) else [json_data]
+                            all_recipes.extend(recipes)
 
-                    # Handle both single recipe and array of recipes
-                    recipes = json_data if isinstance(json_data, list) else [json_data]
+                    # Handle path/URL input
+                    elif json_path:
+                        if json_path.startswith('http://') or json_path.startswith('https://'):
+                            # Fetch from URL
+                            response = requests.get(json_path, timeout=30)
+                            response.raise_for_status()
+                            json_data = response.json()
+                        else:
+                            # Read from local file path
+                            file_path = Path(json_path)
+                            if not file_path.exists():
+                                raise FileNotFoundError(f'File not found: {json_path}')
+                            with open(file_path, 'r') as f:
+                                json_data = json.load(f)
 
-                    # Validate against schema if requested
-                    # ... existing code ...
+                        recipes = json_data if isinstance(json_data, list) else [json_data]
+                        all_recipes.extend(recipes)
+                    else:
+                        messages.error(request, 'Please select a file or enter a path/URL.')
+                        return render(request, 'admin/recipe_import.html', {
+                            'form': form,
+                            'title': 'Import Recipes from JSON',
+                            'site_header': self.admin_site.site_header,
+                            'site_title': self.admin_site.site_title,
+                            'has_permission': True,
+                        })
+
                     # Validate against schema if requested
                     if validate:
                         import os
@@ -95,11 +132,13 @@ class RecipeAdmin(admin.ModelAdmin):
                         schema_path = os.path.join(settings.BASE_DIR, 'recipe.schema.json')
                         with open(schema_path, 'r') as schema_file:
                             schema = json.load(schema_file)
-                    # ... existing code ...
+
+                        for recipe_data in all_recipes:
+                            jsonschema.validate(recipe_data, schema)
 
                     # Import recipes
                     imported_count = 0
-                    for recipe_data in recipes:
+                    for recipe_data in all_recipes:
                         recipe = self._create_recipe_from_json(recipe_data)
                         imported_count += 1
 
@@ -113,6 +152,10 @@ class RecipeAdmin(admin.ModelAdmin):
                     messages.error(request, f'Invalid JSON file: {e}')
                 except jsonschema.ValidationError as e:
                     messages.error(request, f'Schema validation failed: {e.message}')
+                except requests.RequestException as e:
+                    messages.error(request, f'Error fetching URL: {str(e)}')
+                except FileNotFoundError as e:
+                    messages.error(request, str(e))
                 except Exception as e:
                     messages.error(request, f'Error importing recipes: {str(e)}')
         else:
