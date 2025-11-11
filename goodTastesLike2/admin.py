@@ -87,12 +87,15 @@ class RecipeAdmin(admin.ModelAdmin):
                     recipes = json_data if isinstance(json_data, list) else [json_data]
 
                     # Validate against schema if requested
+                    # ... existing code ...
+                    # Validate against schema if requested
                     if validate:
-                        with open('recipe.schema.json', 'r') as schema_file:
+                        import os
+                        from django.conf import settings
+                        schema_path = os.path.join(settings.BASE_DIR, 'recipe.schema.json')
+                        with open(schema_path, 'r') as schema_file:
                             schema = json.load(schema_file)
-
-                        for recipe_data in recipes:
-                            jsonschema.validate(recipe_data, schema)
+                    # ... existing code ...
 
                     # Import recipes
                     imported_count = 0
