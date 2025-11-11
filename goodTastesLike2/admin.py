@@ -25,17 +25,39 @@ class InstructionInline(admin.TabularInline):
     ordering = ['step_number']
 
 
+# ... existing code ...
+
 class TagInline(admin.TabularInline):
     model = Recipe.tags.through
     extra = 1
 
 
+# Add these two classes BEFORE JSONImportForm
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        single_file_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            result = [single_file_clean(d, initial) for d in data]
+        else:
+            result = single_file_clean(data, initial)
+        return result
+
+
+
 class JSONImportForm(forms.Form):
-    json_file = forms.FileField(
+    json_file = MultipleFileField(
         label='Select a JSON file',
         help_text='Upload a JSON file containing recipes following the schema',
         required=False,
-        widget=forms.FileInput(attrs={'multiple': True})
+        # widget=forms.ClearableFileInput(attrs={'multiple': True})
     )
     json_path = forms.CharField(
         label='File path or URL',
