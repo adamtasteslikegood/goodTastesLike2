@@ -1,98 +1,106 @@
 from django.db import models
-from django.contrib.auth.models import User
-import os
-
-
-# To handle images, we need a function to define the upload path
-def recipe_image_path(instance, filename):
-    # file will be uploaded to MEDIA_ROOT/recipe_images/<recipe_id>/<filename>
-    return f'recipe_images/{instance.id}/{filename}'
-
-
-class Tag(models.Model):
-    """
-    Model for a recipe tag (e.g., "spicy", "dessert", "quick").
-    """
-    name = models.CharField(max_length=100, unique=True)
-
-    def __str__(self):
-        return self.name
+from django.core.validators import MinValueValidator
+from django.contrib.postgres.fields import ArrayField
+import json
 
 
 class Recipe(models.Model):
-    """
-    Main model for a Recipe. Based on the provided schema.
-    """
-    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    """Main Recipe model based on the JSON schema"""
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-    prep_time = models.IntegerField(help_text="Preparation time in minutes")
-    cook_time = models.IntegerField(help_text="Cooking time in minutes")
-    servings = models.IntegerField(help_text="Number of servings")
-
-    notes = models.TextField(blank=True, null=True, help_text="Optional notes, tips, or variations")
-    image = models.ImageField(upload_to='recipe_images/', blank=True, null=True)
-
-    tags = models.ManyToManyField(Tag, blank=True)
-
+    prep_time = models.IntegerField(validators=[MinValueValidator(0)], help_text="Preparation time in minutes")
+    cook_time = models.IntegerField(validators=[MinValueValidator(0)], help_text="Cooking time in minutes")
+    servings = models.IntegerField(validators=[MinValueValidator(1)])
+    notes = models.TextField(blank=True, null=True)
+    image = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def total_time(self):
+        return self.prep_time + self.cook_time
+
+
+class Tag(models.Model):
+    """Tags for categorizing recipes"""
+    name = models.CharField(max_length=50, unique=True)
+    recipes = models.ManyToManyField(Recipe, related_name='tags', blank=True)
+
+    class Meta:
+        ordering = ['name']
 
     def __str__(self):
         return self.name
 
 
+class Ingredient(models.Model):
+    """Ingredient model"""
+    UNIT_CHOICES = [
+        ('cup', 'Cup'),
+        ('cups', 'Cups'),
+        ('tsp', 'Teaspoon'),
+        ('teaspoon', 'Teaspoon'),
+        ('teaspoons', 'Teaspoons'),
+        ('Tbs', 'Tablespoon'),
+        ('Tbsp', 'Tablespoon'),
+        ('tablespoon', 'Tablespoon'),
+        ('tablespoons', 'Tablespoons'),
+        ('oz', 'Ounce'),
+        ('ounce', 'Ounce'),
+        ('ounces', 'Ounces'),
+        ('g', 'Gram'),
+        ('gram', 'Gram'),
+        ('grams', 'Grams'),
+        ('kg', 'Kilogram'),
+        ('kilogram', 'Kilogram'),
+        ('kilograms', 'Kilograms'),
+        ('ml', 'Milliliter'),
+        ('milliliter', 'Milliliter'),
+        ('milliliters', 'Milliliters'),
+        ('l', 'Liter'),
+        ('liter', 'Liter'),
+        ('liters', 'Liters'),
+        ('qty', 'Quantity'),
+        ('pinch', 'Pinch'),
+        ('to taste', 'To Taste'),
+    ]
+
+    GROUP_CHOICES = [
+        ('wet', 'Wet'),
+        ('dry', 'Dry'),
+        ('other', 'Other'),
+    ]
+
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='ingredients')
+    name = models.CharField(max_length=200)
+    amount = models.CharField(max_length=50)  # Store as string to handle ranges like "1-2"
+    units = models.CharField(max_length=20, choices=UNIT_CHOICES)
+    notes = models.CharField(max_length=255, blank=True, null=True)
+    group = models.CharField(max_length=20, choices=GROUP_CHOICES, default='other')
+    order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['group', 'order']
+
+    def __str__(self):
+        return f"{self.amount} {self.units} {self.name}"
+
+
 class Instruction(models.Model):
-    """
-    Model for a single instruction step, linked to a Recipe.
-    """
-    recipe = models.ForeignKey(Recipe, related_name='instructions', on_delete=models.CASCADE)
-    step_number = models.PositiveIntegerField()
+    """Recipe instruction/step model"""
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='instructions')
+    step_number = models.IntegerField(validators=[MinValueValidator(1)])
     description = models.TextField()
 
     class Meta:
-        # Ensure steps are ordered correctly for each recipe
         ordering = ['step_number']
-        unique_together = ('recipe', 'step_number')
+        unique_together = ['recipe', 'step_number']
 
     def __str__(self):
-        return f'{self.recipe.name} - Step {self.step_number}'
-
-
-class Ingredient(models.Model):
-    """
-    Model for a single ingredient, linked to a Recipe.
-    """
-    # Unit choices based on the schema's enum
-    UNIT_CHOICES = [
-        ('cup', 'cup(s)'),
-        ('tsp', 'teaspoon(s)'),
-        ('Tbsp', 'tablespoon(s)'),
-        ('oz', 'ounce(s)'),
-        ('g', 'gram(s)'),
-        ('kg', 'kilogram(s)'),
-        ('ml', 'milliliter(s)'),
-        ('l', 'liter(s)'),
-        ('qty', 'qty'),
-        ('pinch', 'pinch'),
-        ('to taste', 'to taste'),
-    ]
-
-    recipe = models.ForeignKey(Recipe, related_name='ingredients', on_delete=models.CASCADE)
-
-    # Per the schema, ingredients are grouped (e.g., "wet", "dry", "garnish")
-    group = models.CharField(max_length=100, default='Ingredients', help_text="Group (e.g., 'Wet', 'Dry', 'Garnish')")
-
-    name = models.CharField(max_length=255)
-
-    # Storing amount as CharField is most flexible for "1-2", "1.5", etc.
-    amount = models.CharField(max_length=50)
-    units = models.CharField(max_length=50, choices=UNIT_CHOICES)
-
-    notes = models.CharField(max_length=255, blank=True, null=True,
-                             help_text="Optional prep notes (e.g., 'chopped', 'melted')")
-
-    def __str__(self):
-        return f'{self.amount} {self.units} {self.name}'
-
-
+        return f"Step {self.step_number}: {self.description[:50]}"

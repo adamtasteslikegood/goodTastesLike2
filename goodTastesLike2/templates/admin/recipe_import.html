@@ -1,0 +1,88 @@
+
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Import Recipes from JSON{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .import-form {
+        max-width: 600px;
+        margin: 20px;
+    }
+    .import-form .form-row {
+        margin: 15px 0;
+    }
+    .import-form label {
+        font-weight: bold;
+        display: block;
+        margin-bottom: 5px;
+    }
+    .import-form .help {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+    .submit-row {
+        margin-top: 20px;
+    }
+    .info-box {
+        background: #f0f0f0;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="import-form">
+    <div class="info-box">
+        <p><strong>Import Instructions:</strong></p>
+        <ul>
+            <li>Upload a JSON file containing one or more recipes</li>
+            <li>The file should follow the recipe schema format</li>
+            <li>You can upload a single recipe object or an array of recipes</li>
+            <li>Enable schema validation to ensure the JSON follows the correct format</li>
+        </ul>
+    </div>
+    
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        {% for field in form %}
+        <div class="form-row">
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.help_text %}
+            <p class="help">{{ field.help_text }}</p>
+            {% endif %}
+            {% if field.errors %}
+            <ul class="errorlist">
+                {% for error in field.errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        {% endfor %}
+        
+        <div class="submit-row">
+            <input type="submit" value="Import Recipes" class="default" />
+            <a href="{% url 'admin:goodTastesLike2_recipe_changelist' %}" class="button cancel-link">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li class="{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% endblock %}
