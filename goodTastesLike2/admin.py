@@ -35,7 +35,7 @@ class JSONImportForm(forms.Form):
         label='Select a JSON file',
         help_text='Upload a JSON file containing recipes following the schema',
         required=False,
-        widget=forms.ClearableFileInput(attrs={'multiple': True})
+        widget=forms.FileInput(attrs={'multiple': True})
     )
     json_path = forms.CharField(
         label='File path or URL',
