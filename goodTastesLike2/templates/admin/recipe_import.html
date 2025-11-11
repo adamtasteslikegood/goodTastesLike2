@@ -32,6 +32,51 @@
         padding: 15px;
         border-radius: 5px;
         margin-bottom: 20px;
+        color: #333;
+    }
+    .drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 5px;
+        padding: 40px;
+        text-align: center;
+        background: #fafafa;
+        cursor: pointer;
+        transition: all 0.3s;
+        color: #666;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+        border-color: #417690;
+        background: #e8f4f8;
+    }
+    .drop-zone input[type="file"] {
+        display: none;
+    }
+    .file-list {
+        margin-top: 20px;
+    }
+    .file-item {
+        background: #fff;
+        border: 1px solid #ddd;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 3px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .file-item .remove-btn {
+        color: #dc3545;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .path-input {
+        margin-top: 20px;
+    }
+    .path-input input[type="text"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
     }
 </style>
 {% endblock %}
@@ -50,31 +95,99 @@
         </ul>
     </div>
     
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" id="import-form">
         {% csrf_token %}
-        
-        {% for field in form %}
+
         <div class="form-row">
-            {{ field.label_tag }}
-            {{ field }}
-            {% if field.help_text %}
-            <p class="help">{{ field.help_text }}</p>
-            {% endif %}
-            {% if field.errors %}
-            <ul class="errorlist">
-                {% for error in field.errors %}
-                <li>{{ error }}</li>
-                {% endfor %}
-            </ul>
+            <label for="id_json_file">Select JSON File(s)</label>
+            <div class="drop-zone" id="drop-zone">
+                <p>Drag and drop JSON files here or click to browse</p>
+                <input type="file" name="json_file" id="id_json_file" accept=".json" multiple />
+            </div>
+            <p class="help">Upload JSON files containing recipes following the schema</p>
+        </div>
+
+        <div class="path-input">
+            <label for="id_json_path">Or enter file path/URL:</label>
+            <input type="text" name="json_path" id="id_json_path" placeholder="/path/to/recipes.json or https://example.com/recipes.json" />
+            <p class="help">Import recipes from a local file path or remote URL</p>
+        </div>
+
+        <div class="file-list" id="file-list" style="display: none;">
+            <h3>Selected Files:</h3>
+            <div id="file-items"></div>
+        </div>
+
+        <div class="form-row">
+            {{ form.validate_schema.label_tag }}
+            {{ form.validate_schema }}
+            {% if form.validate_schema.help_text %}
+            <p class="help">{{ form.validate_schema.help_text }}</p>
             {% endif %}
         </div>
-        {% endfor %}
-        
+
         <div class="submit-row">
             <input type="submit" value="Import Recipes" class="default" />
             <a href="{% url 'admin:goodTastesLike2_recipe_changelist' %}" class="button cancel-link">Cancel</a>
         </div>
     </form>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('id_json_file');
+        const fileList = document.getElementById('file-list');
+        const fileItems = document.getElementById('file-items');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            fileInput.files = files;
+            updateFileList(files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            updateFileList(e.target.files);
+        });
+
+        function updateFileList(files) {
+            if (files.length > 0) {
+                fileList.style.display = 'block';
+                fileItems.innerHTML = '';
+                Array.from(files).forEach((file, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.innerHTML = `
+                        <span><strong>${file.name}</strong> (${(file.size / 1024).toFixed(2)} KB)</span>
+                        <span class="remove-btn" onclick="removeFile(${index})">✕ Remove</span>
+                    `;
+                    fileItems.appendChild(item);
+                });
+            } else {
+                fileList.style.display = 'none';
+            }
+        }
+
+        function removeFile(index) {
+            const dt = new DataTransfer();
+            const files = Array.from(fileInput.files);
+            files.splice(index, 1);
+            files.forEach(file => dt.items.add(file));
+            fileInput.files = dt.files;
+            updateFileList(fileInput.files);
+        }
+    </script>
 </div>
 
 {% if messages %}
